@@ -1,20 +1,28 @@
-//version 1.0
-
+//version - 2.0
 const express = require('express');
 const axios = require('axios');
 const fs = require('fs');
 const { Client } = require("elasticsearch");
-//const elasticUrl = "http://localhost:9200";
+// const elasticUrl = "http://localhost:9200";
 const elasticUrl = "http://host.docker.internal:9200";
+//const elasticUrl = "http://elasticsearch:9200";
+const pdf = require('pdf-poppler');
 const multer = require('multer');
 const ejs = require('ejs')
 const esclient   = new Client({ node: elasticUrl });
 const elasticsearch = require('elasticsearch');
+const path = require("path")
 
+const mime = require('mime-types');
+const pdf2img = require("pdf-img-convert");
+
+const directoryPath = path.join(__dirname, 'database');
+const fileType = mime.lookup(directoryPath)
+const directoryPathImage = path.join(__dirname, 'ayush'); 
 const app = express();
 
 const client = new elasticsearch.Client({
-  // host: 'http://localhost:9200'
+  //  host: 'http://localhost:9200'
    host: 'http://host.docker.internal:9200'
 });
 
@@ -36,12 +44,15 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 app.get('/', (req, res) => {
-  res.render('index');
+  res.render('home');
 })
 
+app.get("/index", (req, res) => {
+  res.render("index");
+})
 app.get('/search', async (req, res) => {
-  const query = req.query.q;
-  if (query) {
+  const q = req.query.q;
+  if (q) {
     try {
       const results = await client.search({
         index: 'data',
@@ -49,7 +60,7 @@ app.get('/search', async (req, res) => {
         body: {
           query: {
             match: {
-              text: query
+              text: q
             }
           }
         }
@@ -60,27 +71,73 @@ app.get('/search', async (req, res) => {
       res.status(500).send('Error searching for documents.');
     }
   } else {
-    res.render('search', { docs });
+    res.render('search', { q });
   }
 });
 
 
+
 let docs = [];
 let intervalId;
+let results;
 app.post('/upload', upload.single('file'), (req, res) => {
   intervalId=setInterval(async () => {
-    try {
-      const filePath = 'database/' + req.file.originalname;
-       const response = await axios({
-        method: 'put',
-        // url: 'http://localhost:9998/tika',
-         url: 'http://host.docker.internal:9998/tika',      
-        data: fs.createReadStream(filePath),
-        headers: { 'Content-Type': 'application/octet-stream',
-                   'Accept': 'text/plain' }
+     try {
+         const filePath = 'database/' + req.file.originalname;
+         const fileType = mime.lookup(filePath)
+        if(fileType === "application/pdf") {
+  const directoryPathImage = path.join(__dirname, "database");
+const files = await fs.promises.readdir(directoryPath);
+for (const file of files) {
+  if (path.extname(file) === ".pdf") {
+    const pdfArray = await pdf2img.convert(path.join(directoryPath, file));
+    for (let i = 0; i < pdfArray.length; i++) {
+      const pngFile = path.basename(file, ".pdf") + "_" + i + ".png";
+      const pngFilePath = path.join(directoryPathImage, pngFile);
+      fs.writeFile(pngFilePath, pdfArray[i], function (error) {
+        if (error) {
+          console.error("Error: " + error);
+        }
       });
-      
-      const results = await client.index({
+
+      const fileType = mime.lookup(pngFilePath);
+      const response = await axios({
+        method: "put",
+        url: "http://localhost:9998/tika",
+        data: fs.createReadStream(pngFilePath),
+        headers: {
+          "Content-Type": fileType,
+          Accept: "text/plain",
+          "X-Tika-OCRLanguage": "eng",
+        },
+      });
+      console.log(response.data);
+      const result = await client.index({
+        index: "data",
+        id: pngFile,
+        type: "text",
+        body: {
+          text: response.data,
+        },
+        refresh: "true",
+      });
+      console.log(result);
+    }
+  }
+}
+
+        } else {
+            const response = await axios({
+        method: 'put',
+          url: 'http://localhost:9998/tika',
+        // url: 'http://host.docker.internal:9998/tika',      
+        data: fs.createReadStream(filePath),
+        headers: { 'Content-Type': fileType,
+                   'Accept': 'text/plain',
+                    "X-Tika-OCRLanguage" :"eng" }
+      });
+      console.log(response);
+      results = await client.index({
         index: 'data',
         type: 'text',
         id: req.file.originalname,  // use unique identifier
@@ -89,6 +146,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
         },
         refresh: "true" //immediately available for search
       });
+}
     
     if (docs.indexOf(results._id) === -1) {
         docs.push(results._id); //save the _id of the indexed document
@@ -99,11 +157,13 @@ app.post('/upload', upload.single('file'), (req, res) => {
       } else {
         console.log('Document already exists');
       }
-      res.render('search', { q });
-    } catch (error) {
-      console.error(error);
-    }
-  }, 60000);  // 120000 milliseconds = 2 minutes
+
+    
+    } catch (err) {
+        console.log('Unable to scan directory: ' + err);
+        results = { _id: null };
+    } 
+  }, 5000);  // 120000 milliseconds = 2 minutes
 });
 
 
@@ -115,3 +175,8 @@ const PORT= 3004
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+
+
+
+
