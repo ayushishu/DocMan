@@ -1,10 +1,18 @@
 <head>
-    <link rel="stylesheet" type="text/css" href="/style.css">
- </head>
- <form action="/upload" method="post" enctype="multipart/form-data">
-     <h1 class="center-text">FILE UPLOAD</h1>
-     
-         <input type="file" name="file" /><br>
-         <input type="submit" value="Upload" /><br>
-     
- </form>
+   <link rel="stylesheet" type="text/css" href="/style.css">
+</head>
+<div>
+<h1 style="
+    display: flex;
+    margin: auto 0;
+    position: absolute;
+    left: 181px;
+    top: 77px;">UPLOAD FILES</h1>
+<form action="/upload" method="post" enctype="multipart/form-data">
+    <h1 class="center-text">Drop your documents here or select</h1>
+    
+        <a href="#" onclick="document.querySelector('input[type=file]').click()">Click here to upload files</a>
+       <input type="file" name="file" style="display:none"/>
+        
+</form>
+</div>
