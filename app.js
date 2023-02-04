@@ -102,8 +102,7 @@ for (const file of files) {
       const fileType = mime.lookup(pngFilePath);
       const response = await axios({
         method: "put",
-        url: "http://host.docker.internal:9998/tika",
-        //url: "http://localhost:9998/tika",
+        url: "http://localhost:9998/tika",
         data: fs.createReadStream(pngFilePath),
         headers: {
           "Content-Type": fileType,
@@ -129,8 +128,8 @@ for (const file of files) {
         } else {
             const response = await axios({
         method: 'put',
-         // url: 'http://localhost:9998/tika',
-        url: 'http://host.docker.internal:9998/tika',      
+          url: 'http://localhost:9998/tika',
+        // url: 'http://host.docker.internal:9998/tika',      
         data: fs.createReadStream(filePath),
         headers: { 'Content-Type': fileType,
                    'Accept': 'text/plain',
