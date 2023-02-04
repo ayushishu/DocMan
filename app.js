@@ -1,4 +1,3 @@
-//version - 2.0
 const express = require('express');
 const axios = require('axios');
 const fs = require('fs');
@@ -6,6 +5,7 @@ const { Client } = require("elasticsearch");
 // const elasticUrl = "http://localhost:9200";
 const elasticUrl = "http://host.docker.internal:9200";
 //const elasticUrl = "http://elasticsearch:9200";
+const pdf = require('pdf-poppler');
 const multer = require('multer');
 const ejs = require('ejs')
 const esclient   = new Client({ node: elasticUrl });
