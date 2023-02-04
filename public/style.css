@@ -11,27 +11,35 @@
 }
 
 .form-container {
+position: relative;
   display: flex;
 }
 
 .form-container .right-container {
-  width: 300px;
-  height: 300px;
-  margin-left: 650px;
+  border-radius: 44px;
+  background-color: #FBF1D3;
+  top: 3px;
+  position: relative;
+  margin-right: 171px;
+ width: 587px;
+  height: 580px;
+  margin-left: 60px;
   margin-top: 70px;
+  border: 1px solid;
 }
 
 
 form {
-     position: absolute;
-    top: 58%;
-    left: 22%;
+
+     position: relative;
+    top: 402px;
+    left: 21%;
     transform: translate(-50%, -50%);
     margin: 0 auto;
     display: flex;
    
     height: 464px;
-    width: 275px;
+    width: 301px;
     padding: 38px;
     border: 1px solid #ccc;
     border-radius: 70px;

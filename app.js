@@ -79,90 +79,80 @@ app.get('/search', async (req, res) => {
 let docs = [];
 let intervalId;
 let results;
-app.post('/upload', upload.single('file'), (req, res) => {
-  intervalId=setInterval(async () => {
-     try {
-         const filePath = 'database/' + req.file.originalname;
-         const fileType = mime.lookup(filePath)
-        if(fileType === "application/pdf") {
-  const directoryPathImage = path.join(__dirname, "database");
-const files = await fs.promises.readdir(directoryPath);
-for (const file of files) {
-  if (path.extname(file) === ".pdf") {
-    const pdfArray = await pdf2img.convert(path.join(directoryPath, file));
-    for (let i = 0; i < pdfArray.length; i++) {
-      const pngFile = path.basename(file, ".pdf") + "_" + i + ".png";
-      const pngFilePath = path.join(directoryPathImage, pngFile);
-      fs.writeFile(pngFilePath, pdfArray[i], function (error) {
-        if (error) {
-          console.error("Error: " + error);
-        }
-      });
+app.post('/upload', upload.single('file'),  (req, res) => {
+   setInterval(async () => {
+  try {
+    const filePath = path.join(__dirname, 'database', req.file.originalname);
+    const fileType = mime.lookup(filePath);
+    const directoryPathImage = path.join(__dirname, 'database');
+    
+    if (fileType === 'application/pdf') {
+      const files = await fs.promises.readdir(directoryPath);
 
-      const fileType = mime.lookup(pngFilePath);
+      for (const file of files) {
+        if (path.extname(file) === '.pdf') {
+          const pdfArray = await pdf2img.convert(path.join(directoryPath, file));
+
+          for (let i = 0; i < pdfArray.length; i++) {
+            const pngFile = `${path.basename(file, '.pdf')}_${i}.png`;
+            const pngFilePath = path.join(directoryPathImage, pngFile);
+
+            await fs.promises.writeFile(pngFilePath, pdfArray[i]);
+
+            const response = await axios({
+              method: 'put',
+              url: 'http://localhost:9998/tika',
+              data: fs.createReadStream(pngFilePath),
+              headers: {
+                'Content-Type': mime.lookup(pngFilePath),
+                Accept: 'text/plain',
+                'X-Tika-OCRLanguage': 'eng',
+              },
+            });
+
+            await client.index({
+              index: 'data',
+              id: pngFile,
+              type: 'text',
+              body: {
+                text: response.data,
+              },
+              refresh: 'true',
+            });
+          }
+        }
+      }
+    } else {
       const response = await axios({
-        method: "put",
-        url: "http://localhost:9998/tika",
-        data: fs.createReadStream(pngFilePath),
+        method: 'put',
+        url: 'http://localhost:9998/tika',
+        data: fs.createReadStream(filePath),
         headers: {
-          "Content-Type": fileType,
-          Accept: "text/plain",
-          "X-Tika-OCRLanguage": "eng",
+          'Content-Type': fileType,
+          Accept: 'text/plain',
+          'X-Tika-OCRLanguage': 'eng',
         },
       });
-      console.log(response.data);
+
       const result = await client.index({
-        index: "data",
-        id: pngFile,
-        type: "text",
+        index: 'data',
+        type: 'text',
+        id: req.file.originalname,
         body: {
           text: response.data,
         },
-        refresh: "true",
+        refresh: 'true',
       });
-      console.log(result);
+
+      console.log('Data indexed successfully:', result);
     }
+
+    console.log("Upload Complete");
+  } catch (error) {
+    console.error('Error:', error);
+    console.log('Unable to upload file');
   }
-}
-
-        } else {
-            const response = await axios({
-        method: 'put',
-          url: 'http://localhost:9998/tika',
-        // url: 'http://host.docker.internal:9998/tika',      
-        data: fs.createReadStream(filePath),
-        headers: { 'Content-Type': fileType,
-                   'Accept': 'text/plain',
-                    "X-Tika-OCRLanguage" :"eng" }
-      });
-      console.log(response);
-      results = await client.index({
-        index: 'data',
-        type: 'text',
-        id: req.file.originalname,  // use unique identifier
-        body: {
-          text: response.data
-        },
-        refresh: "true" //immediately available for search
-      });
-}
-    
-    if (docs.indexOf(results._id) === -1) {
-        docs.push(results._id); //save the _id of the indexed document
-        console.log('Data indexed successfully');
-
-        console.log(docs);
-        console.log(results);
-      } else {
-        console.log('Document already exists');
-      }
-
-    
-    } catch (err) {
-        console.log('Unable to scan directory: ' + err);
-        results = { _id: null };
-    } 
-  }, 5000);  // 120000 milliseconds = 2 minutes
+   }, 5000)
 });
 
 
