@@ -47,7 +47,7 @@ app.get('/', (req, res) => {
 })
 
 app.get("/index", (req, res) => {
-  res.render("index");
+  res.render("index", {indexedFiles});
 })
 app.get('/search', async (req, res) => {
   const q = req.query.q;
@@ -75,55 +75,84 @@ app.get('/search', async (req, res) => {
 });
 
 
-
+let indexedFiles = [];
 let docs = [];
 let intervalId;
 let results;
-app.post('/upload', upload.single('file'),  (req, res) => {
-   setInterval(async () => {
+app.post('/upload', upload.single('file'), (req, res) => {
+  setInterval(async () => {
   try {
     const filePath = path.join(__dirname, 'database', req.file.originalname);
     const fileType = mime.lookup(filePath);
     const directoryPathImage = path.join(__dirname, 'database');
-    
+
+let fileLogo = '';
+
+    switch (fileType) {
+      case 'application/pdf':
+        fileLogo = 'pdf.png';
+        break;
+      case 'application/msword':
+        fileLogo = 'word.png';
+        break;
+      case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        fileLogo = 'word.png';
+        break;
+       default:
+        fileLogo = 'file.png';
+        break;
+}
     if (fileType === 'application/pdf') {
-      const files = await fs.promises.readdir(directoryPath);
+      pdf2img.convert(filePath, { outputdir: directoryPathImage }).then(async (result) => {
+        for (let i = 0; i < result.length; i++) {
+          const pngFile = `${path.basename(filePath, '.pdf')}_${i}.png`;
+          const pngFilePath = path.join(directoryPathImage, pngFile);
 
-      for (const file of files) {
-        if (path.extname(file) === '.pdf') {
-          const pdfArray = await pdf2img.convert(path.join(directoryPath, file));
+          await fs.promises.writeFile(pngFilePath, result[i]);
 
-          for (let i = 0; i < pdfArray.length; i++) {
-            const pngFile = `${path.basename(file, '.pdf')}_${i}.png`;
-            const pngFilePath = path.join(directoryPathImage, pngFile);
+          axios({
+            method: 'put',
+            url: 'http://localhost:9998/tika',
+            data: fs.createReadStream(pngFilePath),
+            headers: {
+              'Content-Type': mime.lookup(pngFilePath),
+              Accept: 'text/plain',
+              'X-Tika-OCRLanguage': 'eng',
+            },
+          })
+            .then(async (response) => {
+              const result = await client.index({
+                index: 'image',
+                type: 'document',
+                id: pngFile,
+                body: {
+                  text: response.data,
+                  file_type: fileType,
+                  file_name: req.file.originalname,
+                  file_logo: fileLogo,
+                },
+                refresh: 'true',
+              });
+              JSON.stringify(result)
+             console.log( `Data indexed: ${JSON.stringify(result)}`);
 
-            await fs.promises.writeFile(pngFilePath, pdfArray[i]);
-
-            const response = await axios({
-              method: 'put',
-              url: 'http://localhost:9998/tika',
-              data: fs.createReadStream(pngFilePath),
-              headers: {
-                'Content-Type': mime.lookup(pngFilePath),
-                Accept: 'text/plain',
-                'X-Tika-OCRLanguage': 'eng',
-              },
+              indexedFiles.push({
+                fileName: req.file.originalname,
+                fileType: fileType,
+                fileLogo: fileLogo,
+              });
+              console.log(indexedFiles);
+              // res.redirect("/index")
+            })
+            .catch((error) => {
+              console.error('Error:', error);
+              console.log('Unable to upload file');
             });
-
-            await client.index({
-              index: 'data',
-              id: pngFile,
-              type: 'text',
-              body: {
-                text: response.data,
-              },
-              refresh: 'true',
-            });
-          }
         }
-      }
+        // res.render('index', { indexedFiles: indexedFiles });
+      });
     } else {
-      const response = await axios({
+      axios({
         method: 'put',
         url: 'http://localhost:9998/tika',
         data: fs.createReadStream(filePath),
@@ -132,27 +161,42 @@ app.post('/upload', upload.single('file'),  (req, res) => {
           Accept: 'text/plain',
           'X-Tika-OCRLanguage': 'eng',
         },
-      });
-
-      const result = await client.index({
-        index: 'data',
-        type: 'text',
-        id: req.file.originalname,
-        body: {
-          text: response.data,
-        },
-        refresh: 'true',
-      });
-
-      console.log('Data indexed successfully:', result);
-    }
-
-    console.log("Upload Complete");
+      })
+        .then(async (response) => {
+          const result = await client.index({
+            index: 'data',
+            type: 'text',
+            id: req.file.originalname,
+            body: {
+              text: response.data,
+              file_type: fileType,
+              file_name: req.file.originalname,
+              file_logo: fileLogo,
+            },
+            refresh: 'true',
+          });
+  console.log( `Data indexed: ${JSON.stringify(result)}`);
+  JSON.stringify(result)
+       indexedFiles.push({
+            fileName: req.file.originalname,
+            fileType: fileType,
+            fileLogo: fileLogo,
+          });
+          console.log(indexedFiles);
+          // res.redirect("/index")
+    })
+    .catch((error) => {
+      console.error('Error:', error);
+      console.log('Unable to upload file');
+    });
+}
+//  res.render('index', { indexedFiles: indexedFiles });
+  
   } catch (error) {
     console.error('Error:', error);
     console.log('Unable to upload file');
   }
-   }, 5000)
+     }, 5000)
 });
 
 
