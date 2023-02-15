@@ -45,6 +45,10 @@ app.get('/', (req, res) => {
   res.render('home');
 })
 
+app.get("/load", (req, res) => {
+  res.render("load", {indexedFiles});
+})
+
 app.get("/index", (req, res) => {
   res.render("index", {indexedFiles});
 })
@@ -52,6 +56,7 @@ app.get("/index", (req, res) => {
 
 app.get('/test', async (req, res) => {
   const q = req.query.q;
+  
   if (q) {
     try {
       const results = await client.search({
@@ -175,7 +180,7 @@ let fileLogo = '';
   const metadata = JSON.parse(data);
   console.log(metadata);
 });
-                    res.redirect("/index");
+                    res.redirect("/load");
                 })
                 .catch(err => {
                     console.log(err);
@@ -196,33 +201,59 @@ let fileLogo = '';
         },
       })
         .then(async (response) => {
-          const result = await client.index({
-            index: 'data',
-            type: 'text',
-            id: req.file.originalname,
-            body: {
-              text: response.data,
-              file_type: fileType,
-              file_name: req.file.originalname,
-              file_logo: fileLogo,
-            },
-            refresh: 'true',
-          });
-  console.log( `Data indexed: ${JSON.stringify(result)}`);
-  JSON.stringify(result)
-       indexedFiles.push({
-           // text: response.data,
-            fileName: req.file.originalname,
-            fileType: fileType,
-            fileLogo: fileLogo,
-          });
-          console.log(indexedFiles);
-              res.redirect("/index")
-    })
-    .catch((error) => {
-      console.error('Error:', error);
-      console.log('Unable to upload file');
-    });
+                const textData = response.data;
+
+                axios({
+                    method: 'put',
+                    url: 'http://localhost:9998/meta',
+                    data: fs.createReadStream(filePath),
+                    headers: {
+                        'Content-Type': 'application/octet-stream',
+                    },
+                })
+                .then(async (metaResponse) => {
+                    const metaData = metaResponse.data;
+                    const result = await client.index({
+                        index: 'image',
+                        type: 'document',
+                        id: req.file.originalname,
+                        body: {
+                            text: textData,
+                            meta: metaData,
+                            fileType: fileType,
+                            file_name: req.file.originalname,
+                            file_logo: fileLogo,
+                        },
+                        refresh: 'true'
+                    });
+
+                    console.log(`Data indexed: ${JSON.stringify(result)}`);
+                    
+
+                    indexedFiles.push({
+                        text: textData,
+                        meta: metaData,
+                        fileName: req.file.originalname,
+                        fileType: fileType,
+                        fileLogo: fileLogo
+                    });
+                    console.log(indexedFiles);
+                    fs.readFile('./metadata.json', (err, data) => {
+  if (err) {
+    console.error(err);
+    return;
+  }
+
+  const metadata = JSON.parse(data);
+  console.log(metadata);
+});
+                    res.redirect("/load");
+                })
+                .catch(err => {
+                    console.log(err);
+                })
+            })
+   
 }
   
   } catch (error) {
