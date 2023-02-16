@@ -1,11 +1,11 @@
 version : '3.3'
 services  :
-  
-  docman-nodejs:
-    container_name: doman-nodejs
+#Container - 1 - website{node}
+  docman_website:
+    container_name: docman_website
     build: .
     links:
-    - "tika"
+    - "docman-Text-extractor"
     - "elasticsearch"
     ports:
     - "3004:3004"
@@ -17,15 +17,16 @@ services  :
       - NODE_PORT=3000
       - ELASTIC_URL=http://elasticsearch:9200 #may be incorrect     
     networks:
-      - elk      
-  
-  tika:
-    image : apache/tika
+      - docnet      
+#Container - 2  - Apacha Tikka + OCR
+  docman-Text-extractor:
+    container_name: Super-Text-extractor
+    image : logicalspark/docker-tikaserver
     ports:
       - "9998:9998"
     networks:
-      - elk
-
+      - docnet  
+#Container - 3 - Database {Elastic Search}
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.4.0
     container_name: elasticsearch
@@ -42,13 +43,13 @@ services  :
     cap_add:
       - IPC_LOCK
     volumes:
-      - elasticsearch-data:/usr/share/elasticsearch/data
+      - Docman:/usr/share/elasticsearch/data
     ports:
       - 9200:9200
       - 9300:9300
     networks:
-      - elk
-
+      - docnet  
+#Conatiner -4 Database Visualization Tool {kibana}
   kibana:
     container_name: kibana
     image: docker.elastic.co/kibana/kibana:7.4.0
@@ -59,12 +60,12 @@ services  :
     depends_on:
       - elasticsearch
     networks:
-      - elk
+      - docnet  
 
 volumes:
-  elasticsearch-data:
-    driver: local
+# For Conatiner 3 {elastic search}
+  Docman:
 
 networks:
-  elk:
+  docnet:  
     driver: bridge    

@@ -1,0 +1,93 @@
+<form class="upload-form" action="/upload" method="post" enctype="multipart/form-data" style=" display: flex;
+  justify-content: center;">
+  <div class="upload" style="display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 80%;
+  height: 380px;
+  background-color: #f1f1f1;
+  border:  2px dashed  #ccc;
+  border-radius: 25px;">
+    <input type="file" name="file" id="file" class="input-file" style=" display: none;">
+    <label for="file" class="file-label" style="  margin-top: 20px;
+  color: black;
+  text-decoration: none;
+  cursor: pointer; font-family: 'Poppins', sans-serif; color: #6096B4;">Click here to upload a file</label>
+   <input type="submit" value="Upload" class="upload-btn" style=" margin-top: 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  cursor: pointer;">
+  </div>
+</form>
+
+<section class="document-info" style="
+border-radius: 25px;
+ margin-left: 150px;
+margin-top: 20px;
+  width: 80%;
+  height: 200px;
+  background-color: #f1f1f1;
+  border: 1px solid #ccc;">
+  <table style=" width: 100%;
+  border-collapse: collapse;">
+    <thead>
+      <tr>
+        <th style=" padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #ddd; font-family: 'Raleway', sans-serif;">Document Name</th>
+        <th style=" padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #ddd; font-family: 'Raleway', sans-serif;">Author</th>
+        <th  style="padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #ddd; font-family: 'Raleway', sans-serif;">Type</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (typeof indexedFiles != 'undefined' && indexedFiles.length > 0) { %>
+        <% for (let i = 0; i < indexedFiles.length; i++) { %>
+          <tr>
+            <td>
+              <img style="width: 30px;  margin-left: 36px;"src="<% switch (indexedFiles[i].fileType) {
+                case 'application/pdf':
+                  %>/pdf.png<%
+                  break;
+                case 'application/msword':
+                case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                  %>/word.png<%
+                  break;
+                case 'text/csv':
+                  %>/csv.png<%
+                  break;
+                case 'text/plain':
+                  %>/image.png<%
+                  break;
+                case 'application/vnd.ms-powerpoint':
+                case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+                  %>/ppt.png<%
+                  break;
+                default:
+                  %>/image.png<%
+                  break;
+              } %>" alt="File icon" class="file-icon">
+              <%= indexedFiles[i].fileName %>
+            </td>
+            <td><%= indexedFiles[i].fileSize %></td>
+            <td style='text-align: center;'><%= indexedFiles[i].fileType %></td>
+          </tr>
+        <% } %>
+      <% } else { %>
+        <tr>
+          <td colspan="3">No documents uploaded yet.</td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+</section>
