@@ -3,8 +3,8 @@ const axios = require('axios');
 const fs = require('fs');
 const { Client } = require("elasticsearch");
 // const elasticUrl = "http://localhost:9200";
-// const elasticUrl = "http://host.docker.internal:9200";
-const elasticUrl = "http://elasticsearch:9200";
+const elasticUrl = "http://host.docker.internal:9200";
+// const elasticUrl = "http://elasticsearch:9200";
 const multer = require('multer');
 const ejs = require('ejs')
 const esclient   = new Client({ node: elasticUrl });
@@ -20,8 +20,8 @@ const directoryPathImage = path.join(__dirname, 'ayush');
 const app = express();
 
 const client = new elasticsearch.Client({
-     host: 'http://localhost:9200'
-    //host: 'http://host.docker.internal:9200'
+    //  host: 'http://localhost:9200'
+    host: 'http://host.docker.internal:9200'
 });
 
 app.use(express.json())
@@ -125,7 +125,8 @@ let fileLogo = '';
 
           axios({
             method:'put',
-            url: "http://localhost:9998/tika",
+            // url: "http://localhost:9998/tika",
+            url: "http://host.docker.internal:9998/tika",
             data: fs.createReadStream(pngFilePath),
              headers: {
               'Content-Type': mime.lookup(pngFilePath),
@@ -138,7 +139,7 @@ let fileLogo = '';
 
                 axios({
                     method: 'put',
-                    url: 'http://localhost:9998/meta',
+                    url: 'http://host.docker.internal:9998/meta',
                     data: fs.createReadStream(filePath),
                     headers: {
                         'Content-Type': 'application/octet-stream',
@@ -191,8 +192,8 @@ let fileLogo = '';
     }  else {
       axios({
         method: 'put',
-          url: 'http://localhost:9998/tika',
-        //  url: 'http://host.docker.internal:9998/tika',
+          // url: 'http://localhost:9998/tika',
+         url: 'http://host.docker.internal:9998/tika',
         data: fs.createReadStream(filePath),
         headers: {
           'Content-Type': fileType,
@@ -205,7 +206,8 @@ let fileLogo = '';
 
                 axios({
                     method: 'put',
-                    url: 'http://localhost:9998/meta',
+                    // url: 'http://localhost:9998/meta',
+                    url: 'http://host.docker.internal:9998/meta',
                     data: fs.createReadStream(filePath),
                     headers: {
                         'Content-Type': 'application/octet-stream',
